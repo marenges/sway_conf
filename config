@@ -1,0 +1,131 @@
+# Default config for sway at /etc/sway/config
+#
+# Read `man 5 sway` for a complete reference.
+
+# Your preferred terminal emulator
+set $term alacritty
+# Note: pass the final command to swaymsg so that the resulting window can be opened
+# on the original workspace that the command was run on.
+set $menu dmenu_path | dmenu | xargs swaymsg exec --
+set $drun wofi -I -i --show drun | xargs swaymsg exec
+
+include /etc/sway/config.d/*
+
+exec wl-paste -t text --watch clipman store --no-persist
+exec  wl-paste -p -t text --watch clipman store --no-persist --histpath="~/.local/share/clipman-primary.json"
+
+include ./config.d/bindings.conf
+include ./config.d/colors.conf
+### Output configuration
+#
+# Default wallpaper (more resolutions are available in /usr/share/backgrounds/sway/)
+output * bg /usr/share/backgrounds/sway/Sway_Wallpaper_Blue_1920x1080.png fill
+#
+# You can get the names of your outputs by running: swaymsg -t get_outputs
+# run load_layout to set up preset screen layouts
+### Input configuration
+#### Example configuration:
+#
+#   input "2:14:SynPS/2_Synaptics_TouchPad" {
+#       dwt enabled
+#       tap enabled
+#       natural_scroll enabled
+#       middle_emulation enabled
+#   }
+#
+# You can get the names of your inputs by running: swaymsg -t get_inputs
+# Read `man 5 sway-input` for more information about this section.
+
+default_border pixel 3
+
+set $main_display DP-7 DP-3
+set $laptop_display eDP-1
+set $secondary_display DP-5 
+
+workspace $ws1 output $laptop_display
+workspace $ws2 output $laptop_display
+workspace $ws3 output $laptop_display
+workspace $ws4 output $main_display
+workspace $ws5 output $secondary_display
+workspace $ws6 output $secondary_display
+
+#
+# Resizing containers:
+#
+mode "resize" {
+    # left will shrink the containers width
+    # right will grow the containers width
+    # up will shrink the containers height
+    # down will grow the containers height
+    bindsym $left resize shrink width 10px
+    bindsym $down resize grow height 10px
+    bindsym $up resize shrink height 10px
+    bindsym $right resize grow width 10px
+
+    # Ditto, with arrow keys
+    bindsym Left resize shrink width 10px
+    bindsym Down resize grow height 10px
+    bindsym Up resize shrink height 10px
+    bindsym Right resize grow width 10px
+
+    # Return to default mode
+    bindsym Return mode "default"
+    bindsym Escape mode "default"
+}
+bindsym $mod+r mode "resize"
+
+# Logout menu
+mode "exit: [l]ogout, [r]eboot, [s]hutdown, loc[k]" {
+    bindsym l exec swaymsg exit
+    bindsym r exec systemctl reboot
+    bindsym s exec systemctl poweroff -i, mode default
+    # bindsym k exec ~/bin/sway_lock, mode "default"
+    bindsym k exec 'swaylock -f -c 000000', mode "default"
+    bindsym Escape mode "default"
+    bindsym Return mode "default"
+}
+
+bindsym $mod+x mode "exit: [l]ogout, [r]eboot, [s]hutdown, loc[k]"
+
+# exec swayidle -w \
+#     timeout 400 'bash ~/bin/sway_lock' \
+#     timeout 600 'swaymsg "output * dpms off"' \
+#     resume 'swaymsg "output * dpms on"' \
+#     timeout 700 'systemctl suspend' \
+#     before-sleep 'bash ~/bin/sway_lock'
+exec swayidle -w \
+         timeout 400 'swaylock -f -c 000000' \
+         timeout 600 'swaymsg "output * dpms off"' resume 'swaymsg "output * dpms on"' \
+         before-sleep 'swaylock -f -c 000000'
+
+#
+# Status Bar:
+#
+# Read `man 5 sway-bar` for more information about this section.
+bar {
+    swaybar_command waybar
+}
+
+exec_always swaymsg seat * hide_cursor 1000
+# exec_always /usr/bin/systemctl --user import-environment SSH_AUTH_SOCK
+exec dbus-update-activation-environment --all
+exec /home/mae1/bin/load_layout
+exec gnome-keyring-daemon --start --components=secrets
+# MS Teams
+assign [instance="crx_cifhbcnohmdccbgoicgdjpfamggdegmo" class="Vivaldi-stable"] $ws2 
+assign [class="Spotify"] $ws3
+
+set {
+  $popup floating enable; boarder pixel 1; sticky enable; shadow enable
+}
+for_window [app_id="pavucontrol"] floating enable
+
+exec /opt/vivaldi/vivaldi --password-store=chrome --profile-directory=Default --app-id=cifhbcnohmdccbgoicgdjpfamggdegmo
+exec_always /usr/bin/python3 /home/mae1/bin/load_layout
+# Import the WAYLAND_DISPLAY env var from sway into the systemd user session.
+set $compositor_name sway
+exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP=$compositor_name
+
+# Stop any services that are running, so that they receive the new env var when they restart.
+exec systemctl --user stop pipewire pipewire-media-session xdg-desktop-portal xdg-desktop-portal-wlr
+exec systemctl --user start pipewire-media-session
